@@ -16,6 +16,8 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true)
     const [importing, setImporting] = useState(false)
     const [message, setMessage] = useState('')
+    const [editingId, setEditingId] = useState<number | null>(null)
+    const [editForm, setEditForm] = useState<Partial<Product>>({})
 
     useEffect(() => {
         fetchProducts()
@@ -92,6 +94,46 @@ export default function AdminPage() {
             fetchProducts() // Refresh the list
         } catch (error) {
             setMessage('Error clearing products')
+        }
+    }
+
+    const startEdit = (product: Product) => {
+        setEditingId(product.id)
+        setEditForm({
+            title: product.title,
+            price: product.price,
+            description: product.description,
+            category: product.category
+        })
+    }
+
+    const cancelEdit = () => {
+        setEditingId(null)
+        setEditForm({})
+    }
+
+    const updateProduct = async () => {
+        if (!editingId) return
+
+        try {
+            const { error } = await supabase
+                .from('producten')
+                .update({
+                    title: editForm.title,
+                    price: editForm.price,
+                    description: editForm.description,
+                    category: editForm.category
+                })
+                .eq('id', editingId)
+
+            if (error) throw error
+
+            setMessage('Product updated successfully!')
+            setEditingId(null)
+            setEditForm({})
+            fetchProducts() // Refresh the list
+        } catch (error) {
+            setMessage('Error updating product')
         }
     }
 
@@ -182,36 +224,106 @@ export default function AdminPage() {
                                             Price
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Description
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Actions
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {products.map((product) => (
-                                        <tr key={product.id}>
+                                        <tr key={product.id} className={editingId === product.id ? 'bg-yellow-50' : ''}>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {product.id}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                                                <div className="truncate" title={product.title}>
-                                                    {product.title}
-                                                </div>
+                                                {editingId === product.id ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editForm.title || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                    />
+                                                ) : (
+                                                    <div className="truncate" title={product.title}>
+                                                        {product.title}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                                                    {product.category}
-                                                </span>
+                                                {editingId === product.id ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editForm.category || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                    />
+                                                ) : (
+                                                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                                        {product.category}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                €{product.price.toFixed(2)}
+                                                {editingId === product.id ? (
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={editForm.price || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, price: parseFloat(e.target.value) || 0 })}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                    />
+                                                ) : (
+                                                    <span>€{product.price.toFixed(2)}</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                                                {editingId === product.id ? (
+                                                    <textarea
+                                                        value={editForm.description || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm resize-none"
+                                                        rows={2}
+                                                    />
+                                                ) : (
+                                                    <div className="truncate" title={product.description}>
+                                                        {product.description}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button
-                                                    onClick={() => deleteProduct(product.id)}
-                                                    className="text-red-600 hover:text-red-900 transition"
-                                                >
-                                                    Delete
-                                                </button>
+                                                {editingId === product.id ? (
+                                                    <div className="flex space-x-2">
+                                                        <button
+                                                            onClick={updateProduct}
+                                                            className="inline-flex items-center px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors border border-green-700/20 shadow-sm"
+                                                        >
+                                                            Save
+                                                        </button>
+                                                        <button
+                                                            onClick={cancelEdit}
+                                                            className="inline-flex items-center px-3 py-1.5 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors border border-gray-300 shadow-sm"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex space-x-2">
+                                                        <button
+                                                            onClick={() => startEdit(product)}
+                                                            className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors border border-blue-700/20 shadow-sm"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteProduct(product.id)}
+                                                            className="inline-flex items-center px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors border border-red-700/20 shadow-sm"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
