@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import axios from 'axios'
 import supabase from '@/lib/supabase'
 
 interface Product {
@@ -45,17 +46,17 @@ export default function AdminPage() {
         setMessage('')
 
         try {
-            const response = await fetch('/api/import')
-            const result = await response.json()
+            const response = await axios.get('/api/import')
+            const result = response.data
 
-            if (response.ok) {
+            if (response.status === 200) {
                 setMessage('Products imported successfully!')
                 fetchProducts() // Refresh the list
             } else {
-                setMessage(`Error: ${result.error}`)
+                setMessage(`Error: ${result.error || 'Unknown error'}`)
             }
-        } catch (error) {
-            setMessage('Error importing products')
+        } catch (error: any) {
+            setMessage(`Error: ${error.response?.data?.error || error.message || 'Error importing products'}`)
         } finally {
             setImporting(false)
         }
