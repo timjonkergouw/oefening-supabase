@@ -1,8 +1,16 @@
 import axios from "axios";
-import { supabase } from "../../../lib/supabase";
+import { supabase, isSupabaseConfigured } from "../../../lib/supabase";
 
 export async function GET() {
     try {
+        // Check if Supabase is configured
+        if (!isSupabaseConfigured()) {
+            return Response.json({
+                error: "Supabase is niet geconfigureerd. Zet NEXT_PUBLIC_SUPABASE_URL en NEXT_PUBLIC_SUPABASE_ANON_KEY in je environment variables.",
+                details: "Deze variabelen moeten ingesteld zijn in Vercel Settings → Environment Variables."
+            }, { status: 500 });
+        }
+
         // 1. Haal producten op van Fake Store API
         const response = await axios.get("https://fakestoreapi.com/products");
         const products = response.data;
