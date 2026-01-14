@@ -31,11 +31,22 @@ export default function AdminPage() {
                 .select('*')
                 .order('id')
 
-            if (error) throw error
+            if (error) {
+                const errorMsg = error.message || String(error)
+                if (errorMsg.includes('<!DOCTYPE html>') || errorMsg.includes('Web server is down') || errorMsg.includes('521')) {
+                    throw new Error('Supabase database is niet bereikbaar. Het project is waarschijnlijk gepauzeerd. Ga naar je Supabase dashboard en herstart het project.')
+                }
+                throw error
+            }
             setProducts(data || [])
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching products:', error)
-            setMessage('Error fetching products')
+            const errorMsg = error?.message || String(error)
+            if (errorMsg.includes('Supabase database is niet bereikbaar')) {
+                setMessage(errorMsg)
+            } else {
+                setMessage(`Error fetching products: ${errorMsg}`)
+            }
         } finally {
             setLoading(false)
         }
@@ -56,7 +67,8 @@ export default function AdminPage() {
                 setMessage(`Error: ${result.error || 'Unknown error'}`)
             }
         } catch (error: any) {
-            setMessage(`Error: ${error.response?.data?.error || error.message || 'Error importing products'}`)
+            const errorMsg = error.response?.data?.error || error.response?.data?.details || error.message || 'Error importing products'
+            setMessage(`Error: ${errorMsg}`)
         } finally {
             setImporting(false)
         }

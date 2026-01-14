@@ -32,7 +32,13 @@ export default function ProductDetailPage() {
                 .select('*')
                 .eq('id', id)
                 .single()
-            if (error) throw error
+            if (error) {
+                const errorMsg = error.message || String(error)
+                if (errorMsg.includes('<!DOCTYPE html>') || errorMsg.includes('Web server is down') || errorMsg.includes('521')) {
+                    console.error('Supabase database is niet bereikbaar. Het project is waarschijnlijk gepauzeerd.')
+                }
+                throw error
+            }
             setProduct(data)
         } catch (e) {
             console.error('Error loading product', e)

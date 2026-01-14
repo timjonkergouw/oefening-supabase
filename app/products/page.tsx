@@ -27,7 +27,13 @@ export default function ProductsPage() {
                 .select('*')
                 .order('id')
 
-            if (error) throw error
+            if (error) {
+                const errorMsg = error.message || String(error)
+                if (errorMsg.includes('<!DOCTYPE html>') || errorMsg.includes('Web server is down') || errorMsg.includes('521')) {
+                    console.error('Supabase database is niet bereikbaar. Het project is waarschijnlijk gepauzeerd.')
+                }
+                throw error
+            }
             setProducts(data || [])
         } catch (error) {
             console.error('Error fetching products:', error)
@@ -87,10 +93,13 @@ export default function ProductsPage() {
                     ))}
                 </div>
 
-                {products.length === 0 && (
+                {products.length === 0 && !loading && (
                     <div className="text-center py-12">
                         <p className="text-gray-500 text-lg">No products found.</p>
                         <p className="text-gray-400 mt-2">Import products using the admin page.</p>
+                        <p className="text-red-500 mt-4 text-sm">
+                            Als je een database fout ziet, controleer of je Supabase project actief is in het Supabase dashboard.
+                        </p>
                     </div>
                 )}
             </div>

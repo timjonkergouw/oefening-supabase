@@ -7,7 +7,25 @@ export async function GET() {
         const response = await axios.get("https://fakestoreapi.com/products");
         const products = response.data;
 
-        // 2. Voeg producten toe aan Supabase
+        // 2. Test Supabase verbinding eerst
+        const { error: connectionError } = await supabase
+            .from("producten")
+            .select("id")
+            .limit(1);
+
+        if (connectionError) {
+            // Check if error message contains HTML (Cloudflare error page)
+            const errorMessage = connectionError.message || String(connectionError);
+            if (errorMessage.includes('<!DOCTYPE html>') || errorMessage.includes('Web server is down') || errorMessage.includes('521')) {
+                return Response.json({
+                    error: "Supabase database is niet bereikbaar. Het project is waarschijnlijk gepauzeerd. Ga naar je Supabase dashboard en herstart het project.",
+                    details: "Error 521: Web server is down. Dit gebeurt vaak wanneer een gratis Supabase project na inactiviteit wordt gepauzeerd."
+                }, { status: 503 });
+            }
+            throw connectionError;
+        }
+
+        // 3. Voeg producten toe aan Supabase
         const { data, error } = await supabase
             .from("producten")
             .insert(products.map(p => ({
@@ -18,11 +36,34 @@ export async function GET() {
             })))
             .select("*");
 
-        if (error) throw error;
+        if (error) {
+            // Check if error is a connection error
+            const errorMessage = error.message || String(error);
+            if (errorMessage.includes('<!DOCTYPE html>') || errorMessage.includes('Web server is down') || errorMessage.includes('521')) {
+                return Response.json({
+                    error: "Supabase database is niet bereikbaar. Het project is waarschijnlijk gepauzeerd. Ga naar je Supabase dashboard en herstart het project.",
+                    details: "Error 521: Web server is down. Dit gebeurt vaak wanneer een gratis Supabase project na inactiviteit wordt gepauzeerd."
+                }, { status: 503 });
+            }
+            throw error;
+        }
 
         return Response.json({ message: "Data toegevoegd!", inserted: data?.length ?? 0, sample: data?.slice(0, 2) ?? [] });
     } catch (err) {
         console.error(err);
-        return Response.json({ error: err.message }, { status: 500 });
+
+        // Check if error response contains HTML (Cloudflare error)
+        const errorMessage = err.message || String(err);
+        if (errorMessage.includes('<!DOCTYPE html>') || errorMessage.includes('Web server is down') || errorMessage.includes('521')) {
+            return Response.json({
+                error: "Supabase database is niet bereikbaar. Het project is waarschijnlijk gepauzeerd. Ga naar je Supabase dashboard en herstart het project.",
+                details: "Error 521: Web server is down. Dit gebeurt vaak wanneer een gratis Supabase project na inactiviteit wordt gepauzeerd."
+            }, { status: 503 });
+        }
+
+        return Response.json({
+            error: err.message || "Onbekende fout opgetreden",
+            details: err.toString()
+        }, { status: 500 });
     }
 }
